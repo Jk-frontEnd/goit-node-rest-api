@@ -43,10 +43,7 @@ export const deleteContact = async (req, res) => {
         if (!result) {
             throw HttpError(404, "Not found");
         }
-        res.status(200).json({
-            message: "Contact deleted",
-            contact: result
-        });
+        res.status(200).json(result);
     } catch (error) {
         if (error.status) {
             res.status(error.status).json({ message: error.message });
@@ -78,6 +75,12 @@ export const updateContact = async (req, res) => {
     try {
         const { id } = req.params;
         const body = req.body;
+
+        const { error } = updateContactSchema.validate(body);
+        if (error) {
+            return res.status(400).json({ message: error.message });
+        }
+
         const result = await updateContactById(id, body);
         if (!result) {
             throw HttpError(404, "Not found");
