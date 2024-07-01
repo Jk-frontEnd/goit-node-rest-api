@@ -1,23 +1,12 @@
 import express from "express";
-<<<<<<< Updated upstream
 import {
   getAllContacts,
   getOneContact,
   deleteContact,
   createContact,
   updateContact,
+  updateFavoriteStatus
 } from "../controllers/contactsControllers.js";
-=======
-import { 
-  getAllContacts, 
-  getOneContact, 
-  deleteContact, 
-  createContact, 
-  updateContact, 
-  updateFavoriteStatus, 
-  validateCreateContact, 
-  validateUpdateContact } from '../controllers/contactsControllers.js';
->>>>>>> Stashed changes
 
 const contactsRouter = express.Router();
 

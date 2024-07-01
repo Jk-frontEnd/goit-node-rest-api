@@ -1,5 +1,3 @@
-<<<<<<< Updated upstream
-=======
 import { Contact } from '../model/contactsModel.js';
 
 export async function listContacts() {
@@ -26,4 +24,3 @@ export async function updateContactById(contactId, body) {
 export async function updateStatusContact(contactId, body) {
   return Contact.findByIdAndUpdate(contactId, { favorite: body.favorite }, { new: true }).exec();
 }
->>>>>>> Stashed changes
