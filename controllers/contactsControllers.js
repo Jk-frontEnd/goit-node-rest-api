@@ -8,13 +8,7 @@ export const getAllContacts = async (req, res) => {
     const contacts = await listContacts();
     res.status(200).json(contacts);
   } catch (error) {
-    if (error.status) {
-      res.status(error.status).json({ message: error.message });
-    } else {
-      res.status(500).json({
-        message: 'Server error'
-      });
-    }
+    res.status(error.status || 500).json({ message: error.message || 'Server error' });
   }
 };
 
@@ -23,33 +17,24 @@ export const getOneContact = async (req, res) => {
     const { id } = req.params;
     const contact = await getContactById(id);
     if (!contact) {
-      throw HttpError(404, "Not found");
+      throw HttpError(404);
     }
     res.status(200).json(contact);
   } catch (error) {
-    if (error.status) {
-      res.status(error.status).json({ message: error.message });
-    } else {
-      res.status(500).json({
-        message: 'Server error'
-      });
-    }
+    res.status(error.status || 500).json({ message: error.message || 'Server error' });
   }
 };
 
 export const deleteContact = async (req, res) => {
   try {
     const { id } = req.params;
-    await removeContact(id);
-    res.status(204).json();
-  } catch (error) {
-    if (error.status) {
-      res.status(error.status).json({ message: error.message });
-    } else {
-      res.status(500).json({
-        message: 'Server error'
-      });
+    const contact = await removeContact(id);
+    if (!contact) {
+      throw HttpError(404);
     }
+    res.status(200).json({ message: 'Contact successfully deleted', contact }); // Returning a response body
+  } catch (error) {
+    res.status(error.status || 500).json({ message: error.message || 'Server error' });
   }
 };
 
@@ -63,13 +48,7 @@ export const createContact = async (req, res) => {
     const newContact = await addContact(name, email, phone);
     res.status(201).json(newContact);
   } catch (error) {
-    if (error.status) {
-      res.status(error.status).json({ message: error.message });
-    } else {
-      res.status(500).json({
-        message: 'Server error'
-      });
-    }
+    res.status(error.status || 500).json({ message: error.message || 'Server error' });
   }
 };
 
@@ -85,37 +64,29 @@ export const updateContact = async (req, res) => {
   
     const result = await updateContactById(id, body);
     if (!result) {
-      throw HttpError(404, "Not found");
+      throw HttpError(404);
     }
     res.status(200).json(result);
   } catch (error) {
-    if (error.status) {
-      res.status(error.status).json({ message: error.message });
-    } else {
-      res.status(500).json({
-        message: 'Server error'
-      });
-    }
+    res.status(error.status || 500).json({ message: error.message || 'Server error' });
   }
 };
 
 export const updateFavoriteStatus = async (req, res) => {
   try {
-    const { contactId } = req.params;
+    const { id: contactId } = req.params;
     const { favorite } = req.body;
+
+    if (favorite === undefined) {
+      throw HttpError(400, "Missing field 'favorite'");
+    }
 
     const result = await updateStatusContact(contactId, { favorite });
     if (!result) {
-      throw HttpError(404, "Not found");
+      throw HttpError(404);
     }
     res.status(200).json(result);
   } catch (error) {
-    if (error.status) {
-      res.status(error.status).json({ message: error.message });
-    } else {
-      res.status(500).json({
-        message: 'Server error'
-      });
-    }
+    res.status(error.status || 500).json({ message: error.message || 'Server error' });
   }
 };

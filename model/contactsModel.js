@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 
-const connectionUrl = 'mongodb+srv://alice:alice14@mydb.c7tevtt.mongodb.net/';
+const connectionUrl = 'mongodb+srv://alice:alice14@mydb.c7tevtt.mongodb.net/contacts-db';
 
 mongoose.connect(connectionUrl).catch((error) => {
   console.error('Error connecting to MongoDB:', error);
