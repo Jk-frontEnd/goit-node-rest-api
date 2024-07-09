@@ -1,6 +1,6 @@
 import { listContacts, getContactById, removeContact, addContact, updateContactById, updateStatusContact } from '../services/contactsServices.js';
 import HttpError from "../helpers/HttpError.js";
-import { createContactSchema, updateContactSchema } from "../schemas/contactsSchemas.js";
+import { createContactSchema, updateContactSchema, updateStatusSchema } from "../schemas/contactsSchemas.js";
 import mongoose from 'mongoose';
 
 const validateObjectId = (id) => {
@@ -48,11 +48,11 @@ export const deleteContact = async (req, res) => {
 
 export const createContact = async (req, res) => {
   try {
-    const { name, email, phone } = req.body;
     const { error } = createContactSchema.validate(req.body);
     if (error) {
       return res.status(400).json({ message: error.message });
     }
+    const { name, email, phone } = req.body;
     const newContact = await addContact(name, email, phone);
     res.status(201).json(newContact);
   } catch (error) {
@@ -63,7 +63,12 @@ export const createContact = async (req, res) => {
 export const updateContact = async (req, res) => {
   try {
     const { id } = req.params;
+    validateObjectId(id);
     const body = req.body;
+  
+    if (Object.keys(body).length === 0) {
+      return res.status(400).json({ message: "Body must have at least one field" });
+    }
   
     const { error } = updateContactSchema.validate(body);
     if (error) {
@@ -72,7 +77,7 @@ export const updateContact = async (req, res) => {
   
     const result = await updateContactById(id, body);
     if (!result) {
-      throw HttpError(404);
+      throw HttpError(404, 'Contact not found');
     }
     res.status(200).json(result);
   } catch (error) {
@@ -85,11 +90,12 @@ export const updateFavoriteStatus = async (req, res) => {
     const { id: contactId } = req.params;
     validateObjectId(contactId);
 
-    const { favorite } = req.body;
-    if (favorite === undefined) {
-      throw HttpError(400, "Missing field 'favorite'");
+    const { error } = updateStatusSchema.validate(req.body);
+    if (error) {
+      return res.status(400).json({ message: error.message });
     }
 
+    const { favorite } = req.body;
     const result = await updateStatusContact(contactId, { favorite });
     if (!result) {
       throw HttpError(404, 'Contact not found');
