@@ -22,7 +22,7 @@ const userSchema = new Schema({
     type: String,
     default: null,
   },
-});
+}, {versionKey: false});
 
 userSchema.pre('save', async function (next) {
   if (!this.isModified('password')) {

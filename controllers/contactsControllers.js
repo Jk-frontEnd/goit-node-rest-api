@@ -11,7 +11,8 @@ const validateObjectId = (id) => {
 
 export const getAllContacts = async (req, res) => {
   try {
-    const contacts = await listContacts();
+    const userId = req.user.id; // Get user ID from middleware
+    const contacts = await listContacts(userId); // Pass user ID to service function
     res.status(200).json(contacts);
   } catch (error) {
     res.status(error.status || 500).json({ message: error.message || 'Server error' });
@@ -22,7 +23,8 @@ export const getOneContact = async (req, res) => {
   try {
     const { id } = req.params;
     validateObjectId(id);
-    const contact = await getContactById(id);
+    const userId = req.user.id; // Get user ID from middleware
+    const contact = await getContactById(id, userId); // Pass user ID to service function
     if (!contact) {
       throw HttpError(404, 'Contact not found');
     }
@@ -36,7 +38,8 @@ export const deleteContact = async (req, res) => {
   try {
     const { id } = req.params;
     validateObjectId(id);
-    const contact = await removeContact(id);
+    const userId = req.user.id; // Get user ID from middleware
+    const contact = await removeContact(id, userId); // Pass user ID to service function
     if (!contact) {
       throw HttpError(404, 'Contact not found');
     }
@@ -53,7 +56,8 @@ export const createContact = async (req, res) => {
       return res.status(400).json({ message: error.message });
     }
     const { name, email, phone } = req.body;
-    const newContact = await addContact(name, email, phone);
+    const userId = req.user.id;
+    const newContact = await addContact(name, email, phone, userId); 
     res.status(201).json(newContact);
   } catch (error) {
     res.status(error.status || 500).json({ message: error.message || 'Server error' });
@@ -75,7 +79,8 @@ export const updateContact = async (req, res) => {
       return res.status(400).json({ message: error.message });
     }
   
-    const result = await updateContactById(id, body);
+    const userId = req.user.id; // Get user ID from middleware
+    const result = await updateContactById(id, body, userId); // Pass user ID to service function
     if (!result) {
       throw HttpError(404, 'Contact not found');
     }
@@ -96,7 +101,8 @@ export const updateFavoriteStatus = async (req, res) => {
     }
 
     const { favorite } = req.body;
-    const result = await updateStatusContact(contactId, { favorite });
+    const userId = req.user.id; 
+    const result = await updateStatusContact(contactId, { favorite }, userId);
     if (!result) {
       throw HttpError(404, 'Contact not found');
     }

@@ -17,7 +17,7 @@ const contactSchema = new Schema({
     ref: 'User', 
     required: true,
   },
-});
+}, {versionKey: false});
 
 const Contact = mongoose.model('Contact', contactSchema);
 

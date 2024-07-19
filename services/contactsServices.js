@@ -1,26 +1,40 @@
 import Contact from '../model/contactsModel.js';
 
-export async function listContacts() {
-  return Contact.find().exec();
+// List all contacts for a specific user
+export async function listContacts(userId) {
+  return Contact.find({ owner: userId }).exec(); // Filter contacts by user ID
 }
 
-export async function getContactById(contactId) {
-  return Contact.findById(contactId).exec();
+// Get a specific contact by ID for a specific user
+export async function getContactById(contactId, userId) {
+  return Contact.findOne({ _id: contactId, owner: userId }).exec(); // Filter by user ID
 }
 
-export async function removeContact(contactId) {
-  return Contact.findByIdAndDelete(contactId).exec();
+// Remove a specific contact by ID for a specific user
+export async function removeContact(contactId, userId) {
+  return Contact.findOneAndDelete({ _id: contactId, owner: userId }).exec(); // Filter by user ID
 }
 
-export async function addContact(name, email, phone) {
-  const newContact = new Contact({ name, email, phone });
+// Add a new contact for a specific user
+export async function addContact(name, email, phone, userId) {
+  const newContact = new Contact({ name, email, phone, owner: userId }); // Associate contact with the user
   return newContact.save();
 }
 
-export async function updateContactById(contactId, body) {
-  return Contact.findByIdAndUpdate(contactId, body, { new: true }).exec();
+// Update a specific contact by ID for a specific user
+export async function updateContactById(contactId, body, userId) {
+  return Contact.findOneAndUpdate(
+    { _id: contactId, owner: userId }, // Filter by user ID
+    body,
+    { new: true }
+  ).exec();
 }
 
-export async function updateStatusContact(contactId, body) {
-  return Contact.findByIdAndUpdate(contactId, { favorite: body.favorite }, { new: true }).exec();
+// Update the favorite status of a specific contact by ID for a specific user
+export async function updateStatusContact(contactId, body, userId) {
+  return Contact.findOneAndUpdate(
+    { _id: contactId, owner: userId }, // Filter by user ID
+    { favorite: body.favorite },
+    { new: true }
+  ).exec();
 }

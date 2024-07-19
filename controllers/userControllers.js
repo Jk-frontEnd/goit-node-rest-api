@@ -9,17 +9,36 @@ const register = async (req, res) => {
   try {
     const user = new User({ email, password });
     await user.save();
-    res.status(201).json({ message: 'User registered successfully' });
+    res.status(201).json({ 
+      user: {
+        email: user.email,
+        subscription: user.subscription,
+      }
+    });
   } catch (error) {
-    res.status(400).json({ message: 'Error registering user', error });
+    if (error.name === 'ValidationError') {
+      for (let field in error.errors) {
+        return res.status(400).json({ message: `Missing required ${field} field` });
+      }
+    }
+
+    if (error.code === 11000) {
+      return res.status(409).json({ message: "Email in use." });
+    }
+
+    res.status(500).json({ message: 'Error registering user', error });
   }
 };
 
+
 const loginUser = async (req, res) => {
+  const { email, password } = req.body;
+
   try {
-    const { email, password } = req.body;
     if (!email || !password) {
-      return res.status(400).json({ message: "Validation error!" });
+      for (let field in error.errors) {
+        return res.status(400).json({ message: `Missing required ${field} field` });
+      }
     }
 
     const user = await User.findOne({ email });
@@ -51,7 +70,12 @@ const loginUser = async (req, res) => {
 
 const logoutUser = async (req, res) => {
   try {
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({ message: "Not authorized" });
+    }
+
     const user = await User.findById(req.user.id);
+
     if (!user) {
       return res.status(401).json({ message: "Not authorized" });
     }
@@ -62,13 +86,14 @@ const logoutUser = async (req, res) => {
     return res.status(204).end();
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: 'Server error' });
+    return res.status(500).json({ message: 'Server error' });
   }
 };
 
 const getCurrentUser = async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
+    
     if (!user) {
       return res.status(401).json({ message: "Not authorized" });
     }
@@ -78,7 +103,7 @@ const getCurrentUser = async (req, res) => {
       subscription: user.subscription,
     });
   } catch (error) {
-    console.error(error);
+    console.error('Error fetching current user:', error);
     res.status(500).json({ message: 'Server error' });
   }
 };
