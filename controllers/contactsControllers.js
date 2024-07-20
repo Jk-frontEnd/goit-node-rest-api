@@ -11,8 +11,8 @@ const validateObjectId = (id) => {
 
 export const getAllContacts = async (req, res) => {
   try {
-    const userId = req.user.id; // Get user ID from middleware
-    const contacts = await listContacts(userId); // Pass user ID to service function
+    const userId = req.user.id; 
+    const contacts = await listContacts(userId);  
     res.status(200).json(contacts);
   } catch (error) {
     res.status(error.status || 500).json({ message: error.message || 'Server error' });
@@ -23,8 +23,8 @@ export const getOneContact = async (req, res) => {
   try {
     const { id } = req.params;
     validateObjectId(id);
-    const userId = req.user.id; // Get user ID from middleware
-    const contact = await getContactById(id, userId); // Pass user ID to service function
+    const userId = req.user.id; 
+    const contact = await getContactById(id, userId); 
     if (!contact) {
       throw HttpError(404, 'Contact not found');
     }
@@ -38,8 +38,8 @@ export const deleteContact = async (req, res) => {
   try {
     const { id } = req.params;
     validateObjectId(id);
-    const userId = req.user.id; // Get user ID from middleware
-    const contact = await removeContact(id, userId); // Pass user ID to service function
+    const userId = req.user.id; 
+    const contact = await removeContact(id, userId); 
     if (!contact) {
       throw HttpError(404, 'Contact not found');
     }
@@ -79,8 +79,8 @@ export const updateContact = async (req, res) => {
       return res.status(400).json({ message: error.message });
     }
   
-    const userId = req.user.id; // Get user ID from middleware
-    const result = await updateContactById(id, body, userId); // Pass user ID to service function
+    const userId = req.user.id; 
+    const result = await updateContactById(id, body, userId);  
     if (!result) {
       throw HttpError(404, 'Contact not found');
     }

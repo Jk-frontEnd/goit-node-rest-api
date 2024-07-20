@@ -36,9 +36,7 @@ const loginUser = async (req, res) => {
 
   try {
     if (!email || !password) {
-      for (let field in error.errors) {
-        return res.status(400).json({ message: `Missing required ${field} field` });
-      }
+      return res.status(400).json({ message: `Missing required ${!email ? 'email' : 'password'} field` });
     }
 
     const user = await User.findOne({ email });
@@ -67,6 +65,7 @@ const loginUser = async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 };
+
 
 const logoutUser = async (req, res) => {
   try {
