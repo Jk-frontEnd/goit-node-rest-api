@@ -122,29 +122,22 @@ const updateAvatar = async (req, res) => {
       return res.status(400).json({ message: "No file uploaded" });
     }
 
-    // Process the uploaded image
     const avatar = await jimp.read(file.path);
     await avatar.resize(250, 250);
     
-    // Define paths
     const avatarDir = path.join(__dirname, '../public/avatars');
     const avatarFilename = `${req.user.id}-${Date.now()}.jpg`;
     const finalAvatarPath = path.join(avatarDir, avatarFilename);
     
-    // Ensure the avatars directory exists
     await fs.mkdir(avatarDir, { recursive: true });
 
-    // Save the processed image
     await avatar.writeAsync(finalAvatarPath);
 
-    // Remove the temporary file
     await fs.unlink(file.path);
 
-    // Update the user's avatar URL in the database
     const avatarURL = `/avatars/${avatarFilename}`;
     await User.findByIdAndUpdate(req.user.id, { avatarURL });
 
-    // Send response
     res.status(200).json({ avatarURL });
   } catch (error) {
     console.error('Error updating avatar:', error);

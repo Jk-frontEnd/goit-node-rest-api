@@ -10,7 +10,7 @@ const tempDir = path.join(__dirname, '..', 'public', 'tmp');
 const multerConfig = multer.diskStorage({
   destination: tempDir,
   filename: (req, file, cb) => {
-    cb(null, file.originalname); // Ensure unique filename if needed
+    cb(null, file.originalname); 
   }
 });
 
