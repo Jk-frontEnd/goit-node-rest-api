@@ -6,13 +6,18 @@ import path from 'path';
 import jimp from 'jimp';
 import { fileURLToPath } from 'url'; 
 import { dirname } from 'path'; 
-import HttpError from "../helpers/HttpError.js";
+import nodemailer from 'nodemailer'; 
+import HttpError from "../helpers/HttpError.js"; 
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 const register = async (req, res) => {
   const { email, password } = req.body;
 
   try {
-    const user = new User({ email, password });
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const user = new User({ email, password: hashedPassword });
     await user.save();
     res.status(201).json({ 
       user: {
@@ -22,19 +27,16 @@ const register = async (req, res) => {
     });
   } catch (error) {
     if (error.name === 'ValidationError') {
-      for (let field in error.errors) {
-        return res.status(400).json({ message: `Missing required ${field} field` });
-      }
+      return res.status(400).json({ message: 'Missing required field' });
     }
 
     if (error.code === 11000) {
       return res.status(409).json({ message: "Email in use." });
     }
 
-    res.status(500).json({ message: 'Error registering user', error });
+    res.status(500).json({ message: 'Error registering user' });
   }
 };
-
 
 const loginUser = async (req, res) => {
   const { email, password } = req.body;
@@ -70,7 +72,6 @@ const loginUser = async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 };
-
 
 const logoutUser = async (req, res) => {
   try {
@@ -112,9 +113,6 @@ const getCurrentUser = async (req, res) => {
   }
 };
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
 const updateAvatar = async (req, res) => {
   try {
     const { file } = req;
@@ -130,9 +128,7 @@ const updateAvatar = async (req, res) => {
     const finalAvatarPath = path.join(avatarDir, avatarFilename);
     
     await fs.mkdir(avatarDir, { recursive: true });
-
     await avatar.writeAsync(finalAvatarPath);
-
     await fs.unlink(file.path);
 
     const avatarURL = `/avatars/${avatarFilename}`;
@@ -145,4 +141,74 @@ const updateAvatar = async (req, res) => {
   }
 };
 
-export { register, loginUser, logoutUser, getCurrentUser, updateAvatar };
+const sendVerificationEmail = async (user) => {
+  const verificationToken = nanoid();
+  user.verificationToken = verificationToken;
+  await user.save();
+
+  const verificationUrl = `http://yourdomain.com/users/verify/${verificationToken}`;
+
+  const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS,
+    },
+  });
+  const mailOptions = {
+    from: 'process.env.EMAIL_USER',
+    to: user.email,
+    subject: 'Email Verification',
+    text: `Please verify your email by clicking on the following link: ${verificationUrl}`,
+  };
+
+  transporter.sendMail(mailOptions, (error, info) => {
+    if (error) {
+      console.error('Error sending email:', error);
+    } else {
+      console.log('Email sent:', info.response);
+    }
+  });
+};
+
+const verifyEmail = async (req, res) => {
+  try {
+    const { verificationToken } = req.params;
+    const user = await User.findOne({ verificationToken });
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    user.verificationToken = null;
+    user.verify = true;
+    await user.save();
+
+    res.status(200).json({ message: 'Verification successful' });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+const verifyAgain = async(req, res) => {
+  const { email } = req.body;
+
+  if (!email) {
+    return res.status(400).json({ message: 'Missing required field email' });
+  }
+
+  const user = await User.findOne({ email });
+
+  if (!user) {
+    return res.status(404).json({ message: 'User not found' });
+  }
+
+  if (user.verify) {
+    return res.status(400).json({ message: 'Verification has already been passed' });
+  }
+
+  sendVerificationEmail(user);
+  res.status(200).json({ message: 'Verification email sent' });
+}
+
+export { verifyAgain, verifyEmail, register, loginUser, logoutUser, getCurrentUser, updateAvatar };

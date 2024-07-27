@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 import gravatar from 'gravatar';
+import { nanoid } from 'nanoid';
 
 const { Schema } = mongoose;
 
@@ -29,7 +30,16 @@ const userSchema = new Schema({
       return gravatar.url(this.email, { s: '200', r: 'pg', d: 'retro' });
     },
   },
-}, {versionKey: false});
+  verify: {
+    type: Boolean,
+    default: false,
+  },
+  verificationToken: {
+    type: String,
+    default: () => nanoid(),
+    required: function() { return !this.verify; }, // Required only if verify is false
+  },
+}, { versionKey: false });
 
 userSchema.pre('save', async function (next) {
   if (!this.isModified('password')) {
