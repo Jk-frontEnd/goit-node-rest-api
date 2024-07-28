@@ -1,13 +1,14 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import User from '../model/userModel.js';
-import fs from 'fs/promises'; 
+import fs from 'fs/promises';
 import path from 'path';
 import jimp from 'jimp';
-import { fileURLToPath } from 'url'; 
-import { dirname } from 'path'; 
-import nodemailer from 'nodemailer'; 
-import HttpError from "../helpers/HttpError.js"; 
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+import nodemailer from 'nodemailer';
+import HttpError from "../helpers/HttpError.js";
+import { nanoid } from 'nanoid';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -19,11 +20,15 @@ const register = async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
     const user = new User({ email, password: hashedPassword });
     await user.save();
-    res.status(201).json({ 
+
+    await sendVerificationEmail(user);
+
+    res.status(201).json({
       user: {
         email: user.email,
         subscription: user.subscription,
-      }
+      },
+      message: 'User registered. Verification email sent.',
     });
   } catch (error) {
     if (error.name === 'ValidationError') {
@@ -38,6 +43,7 @@ const register = async (req, res) => {
   }
 };
 
+// Login user
 const loginUser = async (req, res) => {
   const { email, password } = req.body;
 
@@ -47,12 +53,7 @@ const loginUser = async (req, res) => {
     }
 
     const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(401).json({ message: "Email or password is wrong" });
-    }
-
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
+    if (!user || !await bcrypt.compare(password, user.password)) {
       return res.status(401).json({ message: "Email or password is wrong" });
     }
 
@@ -60,7 +61,7 @@ const loginUser = async (req, res) => {
     user.token = token;
     await user.save();
 
-    return res.status(200).json({
+    res.status(200).json({
       token,
       user: {
         email: user.email,
@@ -68,19 +69,14 @@ const loginUser = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error(error);
     res.status(500).json({ message: 'Server error' });
   }
 };
 
+
 const logoutUser = async (req, res) => {
   try {
-    if (!req.user || !req.user.id) {
-      return res.status(401).json({ message: "Not authorized" });
-    }
-
     const user = await User.findById(req.user.id);
-
     if (!user) {
       return res.status(401).json({ message: "Not authorized" });
     }
@@ -88,27 +84,24 @@ const logoutUser = async (req, res) => {
     user.token = null;
     await user.save();
 
-    return res.status(204).end();
+    res.status(204).end();
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
 const getCurrentUser = async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
-    
     if (!user) {
       return res.status(401).json({ message: "Not authorized" });
     }
 
-    return res.status(200).json({
+    res.status(200).json({
       email: user.email,
       subscription: user.subscription,
     });
   } catch (error) {
-    console.error('Error fetching current user:', error);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -122,11 +115,11 @@ const updateAvatar = async (req, res) => {
 
     const avatar = await jimp.read(file.path);
     await avatar.resize(250, 250);
-    
+
     const avatarDir = path.join(__dirname, '../public/avatars');
     const avatarFilename = `${req.user.id}-${Date.now()}.jpg`;
     const finalAvatarPath = path.join(avatarDir, avatarFilename);
-    
+
     await fs.mkdir(avatarDir, { recursive: true });
     await avatar.writeAsync(finalAvatarPath);
     await fs.unlink(file.path);
@@ -136,7 +129,6 @@ const updateAvatar = async (req, res) => {
 
     res.status(200).json({ avatarURL });
   } catch (error) {
-    console.error('Error updating avatar:', error);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -146,7 +138,7 @@ const sendVerificationEmail = async (user) => {
   user.verificationToken = verificationToken;
   await user.save();
 
-  const verificationUrl = `http://yourdomain.com/users/verify/${verificationToken}`;
+  const verificationUrl = `${process.env.BASE_URL}/users/verify/${verificationToken}`;
 
   const transporter = nodemailer.createTransport({
     service: 'gmail',
@@ -155,8 +147,9 @@ const sendVerificationEmail = async (user) => {
       pass: process.env.EMAIL_PASS,
     },
   });
+
   const mailOptions = {
-    from: 'process.env.EMAIL_USER',
+    from: process.env.EMAIL_USER,
     to: user.email,
     subject: 'Email Verification',
     text: `Please verify your email by clicking on the following link: ${verificationUrl}`,
@@ -190,25 +183,29 @@ const verifyEmail = async (req, res) => {
   }
 };
 
-const verifyAgain = async(req, res) => {
+const verifyAgain = async (req, res) => {
   const { email } = req.body;
 
   if (!email) {
     return res.status(400).json({ message: 'Missing required field email' });
   }
 
-  const user = await User.findOne({ email });
+  try {
+    const user = await User.findOne({ email });
 
-  if (!user) {
-    return res.status(404).json({ message: 'User not found' });
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (user.verify) {
+      return res.status(400).json({ message: 'Verification has already been passed' });
+    }
+
+    await sendVerificationEmail(user);
+    res.status(200).json({ message: 'Verification email sent' });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
   }
-
-  if (user.verify) {
-    return res.status(400).json({ message: 'Verification has already been passed' });
-  }
-
-  sendVerificationEmail(user);
-  res.status(200).json({ message: 'Verification email sent' });
-}
+};
 
 export { verifyAgain, verifyEmail, register, loginUser, logoutUser, getCurrentUser, updateAvatar };

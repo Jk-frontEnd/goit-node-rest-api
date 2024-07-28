@@ -37,7 +37,7 @@ const userSchema = new Schema({
   verificationToken: {
     type: String,
     default: () => nanoid(),
-    required: function() { return !this.verify; }, // Required only if verify is false
+    required: function() { return !this.verify; }, 
   },
 }, { versionKey: false });
 
