@@ -17,12 +17,8 @@ const register = async (req, res) => {
   const { email, password } = req.body;
 
   try {
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const user = new User({ email, password: hashedPassword });
+    const user = new User({ email, password });
     await user.save();
-
-    await sendVerificationEmail(user);
-
     res.status(201).json({
       user: {
         email: user.email,
@@ -32,18 +28,19 @@ const register = async (req, res) => {
     });
   } catch (error) {
     if (error.name === 'ValidationError') {
-      return res.status(400).json({ message: 'Missing required field' });
+      for (let field in error.errors) {
+        return res.status(400).json({ message: `Missing required ${field} field` });
+      }
     }
 
     if (error.code === 11000) {
       return res.status(409).json({ message: "Email in use." });
     }
 
-    res.status(500).json({ message: 'Error registering user' });
+    res.status(500).json({ message: 'Error registering user', error });
   }
 };
 
-// Login user
 const loginUser = async (req, res) => {
   const { email, password } = req.body;
 
@@ -53,15 +50,24 @@ const loginUser = async (req, res) => {
     }
 
     const user = await User.findOne({ email });
-    if (!user || !await bcrypt.compare(password, user.password)) {
+    if (!user) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
       return res.status(401).json({ message: "Email or password is wrong" });
+    }
+
+    if (!user.verify) {
+      return res.status(401).json({ message: 'Email not verified. Please check your email for verification instructions.' });
     }
 
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
     user.token = token;
     await user.save();
 
-    res.status(200).json({
+    return res.status(200).json({
       token,
       user: {
         email: user.email,
@@ -69,10 +75,10 @@ const loginUser = async (req, res) => {
       },
     });
   } catch (error) {
+    console.error(error);
     res.status(500).json({ message: 'Server error' });
   }
 };
-
 
 const logoutUser = async (req, res) => {
   try {
